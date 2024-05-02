@@ -7,16 +7,20 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import Dataset,DataLoader
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 import sys
-seed = 1
+import torch.jit
+import coremltools
+
+seed = 2
 torch.manual_seed(seed)
+np.random.seed(seed)
 
 
 if torch.cuda.is_available():
     device = "cuda"
 else:
     device = "cpu"
-
 class CustomData(Dataset):
      def __init__(self, features, labels, transform = None):
           self.features = features
@@ -31,12 +35,7 @@ class CustomData(Dataset):
           if self.transform:
                samples = self.transform(samples)
           return samples
-               
-class ToTensor():
-     def __call__(self, samples):
-          features, labels = samples
-          return torch.from_numpy(features).float(), torch.from_numpy(labels).float()
-
+     
 if __name__ == "__main__":
     x_train_path = r"/Users/Jay/Desktop/dataset/x_train.xlsx"
     x_test_path = r"/Users/Jay/Desktop/dataset/x_test.xlsx"
@@ -52,57 +51,64 @@ if __name__ == "__main__":
     x_test = torch.tensor(x_test.values).float()
     y_train = torch.tensor(y_train.values).float()
     y_test = torch.tensor(y_test.values).float()
-    
-   
-    
+
     traindataset = CustomData(x_train, y_train, transform = None)
     testdataset = CustomData(x_test, y_test, transform = None)
 
     traindataloader = DataLoader(dataset=traindataset, batch_size = 7, shuffle = False)
     testdataloader = DataLoader(dataset=testdataset, batch_size = 3, shuffle = False)
+    
+    def linear_layer(input, weight, bias):
+         return torch.matmul(input, weight) + bias
+     
+    def distances(x , y):
+        #x = torch.from_numpy(x)
+        discriminant = torch.sum((y - x)**2, dim = 1)
+        distance = torch.sqrt(discriminant)
+        return distance
 
-    class NeuralNet(nn.Module):
-               def __init__(self, input = x_train.shape[1], output = y_train.shape[1]):
-                    super().__init__()
-                    self.fc = nn.Sequential(nn.Linear(input,5),
-                                             nn.Sigmoid(),
-                                             nn.Linear(5,output)
-                                             )
-                    
-               def forward(self,x):
-                    out = self.fc(x)
-                    return out
-                    
-    model = NeuralNet()
+    class RadialBasis(nn.Module):
+        def __init__ (self, hidden):
+              super().__init__()
+              self.input = x_train.shape[1]
+              self.hidden = hidden
+              self.output = y_train.shape[1]
+              self. device = device
+              self.centre = nn.Parameter(torch.randn((1, self.input)))
+              self.width = nn.Parameter(torch.randn((1,)))
+              self.weight = nn.Parameter(torch.randn((self.hidden, self.output)))
+              self.bias = nn.Parameter(torch.randn((1,)))
+        
+        def forward(self, x):
+             distance = distances(x, self.centre)
+             multiplier = torch.ones(1, self.hidden).float()
 
-    iterations = 691
+             def gaussian(distances, width, multiplier):
+                phi = torch.exp(-(distances ** 2)/ ((2 * width) ** 2))
+                phi = torch.reshape(phi,(x.shape[0]  , 1)).float()
+                return torch.matmul(phi, multiplier) 
+             
+             activations = gaussian(distance, width = self.width, multiplier = multiplier)
+             output = linear_layer(activations, weight = self.weight, bias = self.bias)
+             return output
+
+    model = RadialBasis(hidden = 10)
+
+    iterations = 110
     loss = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr = 0.01)
     reg_strength = 0.001
     model.train()
-    
-    preds = []
 
     for epoch in range(iterations):
           for i, (x_train,y_train) in enumerate(traindataloader):
-                         abs_sum_weights = 0
-
-                         for params in model.parameters():
-                                abs = torch.abs(params)
-                                abs_sum_weights += abs
-                         lasso = reg_strength * torch.sum(abs_sum_weights)
-                         lasso = lasso.clone()
-                        
-                         
                          optimizer.zero_grad()
                          output = model(x_train)
-                         cost = loss(y_train, output) + lasso
+                         cost = loss(y_train, output) 
                          cost.backward()
                          optimizer.step()
-
-                         
           if epoch % 10 == 0:
-                print(f"Epoch: {epoch + 1}, mse: {cost:.6f} ")
+            print(f"Epoch: {epoch + 1}, mse: {cost:.6f} ")
      
     model.eval()
     total_sample = 0
@@ -118,10 +124,10 @@ if __name__ == "__main__":
 
     print(f"Test mse: {average_loss:.6f}")
     
-    average_loss = torch.tensor(average_loss)
+average_loss = torch.tensor(average_loss)
 
-    model.eval()
-    with torch.no_grad():
+model.eval()
+with torch.no_grad():
                x_train_path = r"/Users/Jay/Desktop/dataset/x_train.xlsx"
                x_test_path = r"/Users/Jay/Desktop/dataset/x_test.xlsx"
                
@@ -135,15 +141,21 @@ if __name__ == "__main__":
                train_pred = model(x_train)
                test_pred = model(x_test)
 
+model.eval()
+example_input = torch.randn(1, 3, 224, 224)
+
+# Convert the PyTorch model to TorchScript (jit) format
+traced_model = torch.jit.trace(model, x_train)
+
+# Convert the TorchScript (jit) model to CoreML format
+coreml_model = coremltools.convert(traced_model, inputs=[coremltools.TensorType(name="input", shape=x_train.shape)])
+
+# Save the converted CoreML model to disk
+coreml_model.save("converted_model.mlmodel")
 
 
+     
 
-sys.exit()
-path1 = "/Users/Jay/Desktop/dataset/bpnn_train.xlsx"
-path2 = "/Users/Jay/Desktop/dataset/bpnn_test.xlsx"
+                         
 
-pd1 = pd.DataFrame(train_pred)
-pd2 = pd.DataFrame(test_pred)
-
-pd1.to_excel(path1, index=None, header=None)
-pd2.to_excel(path2, index=None, header=None)
+    

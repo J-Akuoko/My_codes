@@ -1,0 +1,99 @@
+body{
+    background-image: url(/Users/Jay/Desktop/jj/gradient-blue.jpg);
+    background-repeat: no-repeat;
+    background-size: cover;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+
+}
+
+.Image_1{
+   
+    border-radius: 10px;
+}
+.Headings{
+    color: #333333;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr ;
+    text-align: center;
+}
+.Home_contents{
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+}
+
+
+.About_Us{
+    background-color: lightblue;
+    margin-right: 150px;
+    text-align: justify;
+    border-radius: 10px;
+    border: solid;
+    padding:20px;
+    font-size: large;
+
+}
+.footer{
+    text-align: center;
+
+}
+
+.Lin{
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+.First_set{
+    display: grid;
+    grid-template-columns: 1fr 5fr ;
+
+}
+.lin_ma_about{
+    text-align: justify;
+}
+.News{
+    text-align: justify;
+    margin-left: 100px;
+
+   
+}
+.news1{
+    background-color: lightblue;
+    text-align: justify;
+    border-radius: 10px;
+    border: solid;
+    padding:20px;
+    margin-left: 100px;
+}
+.Man_image{
+    margin-left: 170px;
+}
+
+.Current_research{
+    text-align: justify;
+}
+
+.Contact_1{
+    background-color: lightblue;
+    text-align: justify;
+    border-radius: 10px;
+    border: solid;
+    padding:20px; 
+}
+.overview_1{
+    text-align: justify;
+    font-size: normal;
+    
+}
+.news_heading{
+    margin-left: 110px;
+}
+.sponsors{
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    margin-left: 250px;
+    gap:10px;  
+    
+}
+.footer{
+    padding: 10px;
+}
+
